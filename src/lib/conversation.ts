@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type ChatRole = "user" | "assistant";
 
 export type ChatMessage = {
@@ -30,9 +31,11 @@ export function appendMessage(id: string, role: ChatRole, text: string) {
   prune();
   const session = STORE.get(id) || { messages: [], updatedAt: Date.now() };
   session.messages.push({ role, text });
+
   if (session.messages.length > MAX_MESSAGES) {
     session.messages = session.messages.slice(-MAX_MESSAGES);
   }
+
   session.updatedAt = Date.now();
   STORE.set(id, session);
 }
@@ -41,8 +44,7 @@ export function buildPrompt(options: {
   systemPrompt: string;
   business: {
     name?: string;
-    knowledgeBase?: string;
-    rules?: string[];
+    knowledgeBase?: any; // now supports context object
   };
   history: ChatMessage[];
   userText: string;
@@ -50,38 +52,67 @@ export function buildPrompt(options: {
   const { systemPrompt, business, history, userText } = options;
   const lines: string[] = [];
 
+  // 🔥 limit history (important)
+  const recentHistory = history.slice(-6);
+
   lines.push(systemPrompt.trim());
   lines.push("");
+
   lines.push("Reply rules:");
   lines.push("- Answer in Mongolian.");
-  lines.push("- Keep replies short and clear, usually 1-3 sentences.");
-  lines.push("- Use only the approved knowledge base below.");
-  lines.push("- Never guess or invent missing facts, prices, durations, deadlines, or contacts.");
-  lines.push("- Do not use contracts, internal operations, bank details, or marketing-only claims.");
-  lines.push("- If a value is missing or marked NEEDS_MANUAL_FIX, say: \"Энэ мэдээлэл одоогоор тодорхойгүй байна. Хүний ажилтантай холбож өгье.\"");
-  lines.push("- If the user asks about programs, include exact name, duration, and price when available.");
-  lines.push("- Do not promise that a student will definitely receive a scholarship.");
-  lines.push("- If the user wants to register, collect name, phone number, and the program they are interested in.");
-  lines.push("- If the user only greets you, reply with one short greeting and offer help.");
-  lines.push("- Ask at most one follow-up question.");
+  lines.push("- Keep replies short (1-2 sentences).");
+  lines.push("- Use only the provided context.");
+  lines.push("- Do not guess missing information.");
+  lines.push("- If unsure, say you will connect to a human.");
 
-  if (business.rules?.length) {
-    lines.push("");
-    lines.push("Approved business rules:");
-    for (const rule of business.rules) {
-      lines.push(`- ${rule}`);
-    }
-  }
+  lines.push("- Always guide the user toward a suitable program.");
+  lines.push(
+    "- If the user is unsure, recommend the Standard Program (12 months, 5,500,000₮) as the default option.",
+  );
+
+  lines.push(
+    "- If the user asks about full program, prioritize the Standard Program before mentioning others.",
+  );
+
+  lines.push(
+    "- If the user mentions money problems, suggest the cheapest module first (e.g., 599,999₮ IELTS course).",
+  );
+  lines.push(
+    "- Do not suggest expensive programs when the user shows budget concern.",
+  );
+
+  lines.push(
+    "- When answering about programs, include name, duration, and price clearly.",
+  );
+
+  lines.push("- Do not guarantee scholarship success under any circumstances.");
+
+  lines.push(
+    "- Only ask for name and phone number when the user shows clear intent to join.",
+  );
+  lines.push("- Do not repeatedly ask for contact information.");
+
+  lines.push(
+    "- If the question is unclear, ask one short clarifying question.",
+  );
 
   lines.push("");
   lines.push(`Business name: ${business?.name || "N/A"}`);
-  lines.push("Approved knowledge base:");
-  lines.push(business?.knowledgeBase || "N/A");
+
+  lines.push("Context:");
+
+  // 🔥 supports BOTH string or object (safe)
+  if (typeof business?.knowledgeBase === "string") {
+    lines.push(business.knowledgeBase);
+  } else {
+    lines.push(JSON.stringify(business?.knowledgeBase || {}));
+  }
+
   lines.push("");
 
-  if (history.length) {
+  if (recentHistory.length) {
     lines.push("Conversation so far:");
-    for (const message of history) {
+    for (const message of recentHistory) {
       const role = message.role === "user" ? "User" : "Assistant";
       lines.push(`${role}: ${message.text}`);
     }
@@ -90,5 +121,6 @@ export function buildPrompt(options: {
 
   lines.push(`User: ${userText}`);
   lines.push("Assistant:");
+
   return lines.join("\n");
 }

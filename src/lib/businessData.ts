@@ -17,23 +17,19 @@ export type FAQItem = {
 };
 
 export type KnowledgeData = {
-  programs: Program[];
+  packages: Program[];
+  modules: Program[];
   faq: FAQItem[];
   conflicts_found: string[];
 };
 
-export type ProgramsData = Pick<KnowledgeData, "programs" | "conflicts_found">;
+export type ProgramsData = Pick<KnowledgeData, "packages" | "modules" | "conflicts_found">;
 
 export type FAQData = Pick<KnowledgeData, "faq">;
-
-export type RulesData = {
-  rules: string[];
-};
 
 export type PromptBusinessData = {
   name: string;
   knowledgeBase: string;
-  rules: string[];
 };
 
 export type BusinessDataFile = {
@@ -43,23 +39,14 @@ export type BusinessDataFile = {
 };
 
 const KNOWLEDGE_PATH = path.join(process.cwd(), "data", "business.json");
-const RULES_PATH = path.join(process.cwd(), "data", "rules.json");
 const BUSINESS_NAME = "YETI Educational Academy";
 const DEFAULT_SYSTEM_PROMPT =
   "You are the official AI receptionist for YETI Educational Academy. Reply in clear Mongolian. Use only the approved knowledge base. Never guess, never use contract-only or internal-only information, and never promise scholarships unless the knowledge base says so.";
 const DEFAULT_KNOWLEDGE: KnowledgeData = {
-  programs: [],
+  packages: [],
+  modules: [],
   faq: [],
   conflicts_found: [],
-};
-const DEFAULT_RULES: RulesData = {
-  rules: [
-    "Only answer from the approved YETI Educational Academy data.",
-    "Do not mention contracts, internal operations, bank accounts, or internal-only files.",
-    "If a value is missing or marked NEEDS_MANUAL_FIX, say the information is not final and offer human help.",
-    "Do not guarantee scholarship approval.",
-    "Keep replies short, clear, and in Mongolian.",
-  ],
 };
 
 async function readJsonFile<T>(filePath: string, fallback: T): Promise<T> {
@@ -78,26 +65,26 @@ function formatPrice(price: ProgramPrice) {
 function formatKnowledgeBase(data: KnowledgeData) {
   const lines: string[] = [];
 
-  lines.push("Approved programs:");
-  for (const program of data.programs) {
+  lines.push("Packages:");
+  for (const program of data.packages) {
     lines.push(
       `- ${program.name} | duration: ${program.duration} | price: ${formatPrice(program.price)} | target: ${program.target} | description: ${program.description}`,
     );
   }
 
   lines.push("");
-  lines.push("Approved FAQ:");
+  lines.push("Modules:");
+  for (const program of data.modules) {
+    lines.push(
+      `- ${program.name} | duration: ${program.duration} | price: ${formatPrice(program.price)} | target: ${program.target} | description: ${program.description}`,
+    );
+  }
+
+  lines.push("");
+  lines.push("FAQ:");
   for (const item of data.faq) {
     lines.push(`- Q: ${item.question}`);
     lines.push(`  A: ${item.answer}`);
-  }
-
-  if (data.conflicts_found.length) {
-    lines.push("");
-    lines.push("Known conflicts or values that need caution:");
-    for (const conflict of data.conflicts_found) {
-      lines.push(`- ${conflict}`);
-    }
   }
 
   return lines.join("\n");
@@ -110,7 +97,8 @@ export async function readKnowledgeData(): Promise<KnowledgeData> {
 export async function readPrograms(): Promise<ProgramsData> {
   const knowledge = await readKnowledgeData();
   return {
-    programs: knowledge.programs,
+    packages: knowledge.packages,
+    modules: knowledge.modules,
     conflicts_found: knowledge.conflicts_found,
   };
 }
@@ -122,20 +110,14 @@ export async function readFAQ(): Promise<FAQData> {
   };
 }
 
-export async function readRules(): Promise<RulesData> {
-  return readJsonFile(RULES_PATH, DEFAULT_RULES);
-}
-
 export async function readBusinessData(): Promise<BusinessDataFile> {
   const knowledge = await readKnowledgeData();
-  const rules = await readRules();
 
   return {
     systemPrompt: DEFAULT_SYSTEM_PROMPT,
     business: {
       name: BUSINESS_NAME,
       knowledgeBase: formatKnowledgeBase(knowledge),
-      rules: rules.rules,
     },
     knowledge,
   };
@@ -144,21 +126,35 @@ export async function readBusinessData(): Promise<BusinessDataFile> {
 export async function buildContext(intent: string) {
   const data = await readKnowledgeData();
 
-  if (intent === "price" || intent === "program" || intent === "duration") {
+  if (intent === "price") {
     return {
-      programs: data.programs,
-      conflicts_found: data.conflicts_found,
+      packages: data.packages,
+    };
+  }
+
+  if (intent === "duration") {
+    return {
+      packages: data.packages,
+    };
+  }
+
+  if (intent === "program") {
+    return {
+      packages: data.packages,
+      modules: data.modules,
     };
   }
 
   if (intent === "faq" || intent === "scholarship" || intent === "contact") {
     return {
       faq: data.faq,
-      conflicts_found: data.conflicts_found,
     };
   }
 
-  return data;
+  return {
+    packages: data.packages,
+    faq: data.faq,
+  };
 }
 
 export function detectIntent(message: string): string {
@@ -168,7 +164,8 @@ export function detectIntent(message: string): string {
     m.includes("үнэ") ||
     m.includes("төлбөр") ||
     m.includes("price") ||
-    m.includes("cost")
+    m.includes("cost") ||
+    m.includes("how much")
   ) {
     return "price";
   }
@@ -176,6 +173,7 @@ export function detectIntent(message: string): string {
   if (
     m.includes("хугацаа") ||
     m.includes("сар") ||
+    m.includes("хэр удаан") ||
     m.includes("duration") ||
     m.includes("how long")
   ) {
@@ -186,6 +184,9 @@ export function detectIntent(message: string): string {
     m.includes("ielts") ||
     m.includes("toefl") ||
     m.includes("хөтөлбөр") ||
+    m.includes("сургалт") ||
+    m.includes("суралц") ||
+    m.includes("course") ||
     m.includes("program")
   ) {
     return "program";
