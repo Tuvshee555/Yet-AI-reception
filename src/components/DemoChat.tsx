@@ -23,7 +23,10 @@ export default function DemoChat() {
       const j = await r.json();
       setMessages((s) => [...s, { from: "bot", text: j.reply || "..." }]);
     } catch (e) {
-      setMessages((s) => [...s, { from: "bot", text: "server error" }]);
+      setMessages((s) => [
+        ...s,
+        { from: "bot", text: "Уучлаарай, сервертэй холбогдоход алдаа гарлаа." },
+      ]);
     } finally {
       setSending(false);
     }
@@ -48,7 +51,7 @@ export default function DemoChat() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           className="flex-1 p-2 border rounded"
-          placeholder="shudnii tsag avah..."
+          placeholder="Хөтөлбөр, үнэ, тэтгэлгийн талаар асуугаарай..."
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -62,7 +65,7 @@ export default function DemoChat() {
           className="p-2 border rounded"
           disabled={sending}
         >
-          {sending ? "Sending..." : "Send"}
+          {sending ? "Илгээж байна..." : "Илгээх"}
         </button>
       </div>
     </div>

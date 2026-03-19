@@ -1,71 +1,215 @@
 import { promises as fs } from "fs";
 import path from "path";
 
-export type BusinessSettings = {
-  name?: string;
-  phone?: string;
-  address?: string;
-  hours?: string;
-  services?: string;
-  products?: string;
-  sizes?: string;
-  shipping?: string;
-  returns?: string;
-  prices?: string;
-  links?: string;
+export type ProgramPrice = number | "NEEDS_MANUAL_FIX";
+
+export type Program = {
+  name: string;
+  duration: string;
+  price: ProgramPrice;
+  target: string;
+  description: string;
+};
+
+export type FAQItem = {
+  question: string;
+  answer: string;
+};
+
+export type KnowledgeData = {
+  programs: Program[];
+  faq: FAQItem[];
+  conflicts_found: string[];
+};
+
+export type ProgramsData = Pick<KnowledgeData, "programs" | "conflicts_found">;
+
+export type FAQData = Pick<KnowledgeData, "faq">;
+
+export type RulesData = {
+  rules: string[];
+};
+
+export type PromptBusinessData = {
+  name: string;
+  knowledgeBase: string;
+  rules: string[];
 };
 
 export type BusinessDataFile = {
-  systemPrompt?: string;
-  business?: BusinessSettings;
+  systemPrompt: string;
+  business: PromptBusinessData;
+  knowledge: KnowledgeData;
 };
 
-const DATA_PATH = path.join(process.cwd(), "data", "business.json");
-
-const DEFAULT_DATA: BusinessDataFile = {
-  systemPrompt:
-    "You are a friendly Mongolian customer support assistant for a clothing brand. Answer briefly and clearly. Use the business data below when asked about products, prices, sizes, shipping, returns, or contact info. If something is not in the business data, say you are not sure and offer to connect with a human.",
-  business: {
-    name: "Your Clothing Brand",
-    phone: "+976 0000 0000",
-    address: "Ulaanbaatar, Mongolia",
-    hours: "Daily 10:00-20:00",
-    services: "Product info, sizes, shipping, returns, order help",
-    products: "T-shirt, hoodie, jacket, accessories",
-    sizes: "S, M, L, XL (some items XXL)",
-    shipping: "Ulaanbaatar same-day, countryside 2-4 days",
-    returns: "7 days with receipt, unused items only",
-    prices: "T-shirt: 49,000 MNT; Hoodie: 129,000 MNT; Jacket: 199,000 MNT",
-    links: "Instagram: https://instagram.com/yourbrand | Store: https://yourbrand.com",
-  },
+const KNOWLEDGE_PATH = path.join(process.cwd(), "data", "business.json");
+const RULES_PATH = path.join(process.cwd(), "data", "rules.json");
+const BUSINESS_NAME = "YETI Educational Academy";
+const DEFAULT_SYSTEM_PROMPT =
+  "You are the official AI receptionist for YETI Educational Academy. Reply in clear Mongolian. Use only the approved knowledge base. Never guess, never use contract-only or internal-only information, and never promise scholarships unless the knowledge base says so.";
+const DEFAULT_KNOWLEDGE: KnowledgeData = {
+  programs: [],
+  faq: [],
+  conflicts_found: [],
+};
+const DEFAULT_RULES: RulesData = {
+  rules: [
+    "Only answer from the approved YETI Educational Academy data.",
+    "Do not mention contracts, internal operations, bank accounts, or internal-only files.",
+    "If a value is missing or marked NEEDS_MANUAL_FIX, say the information is not final and offer human help.",
+    "Do not guarantee scholarship approval.",
+    "Keep replies short, clear, and in Mongolian.",
+  ],
 };
 
-export async function readBusinessData(): Promise<BusinessDataFile> {
+async function readJsonFile<T>(filePath: string, fallback: T): Promise<T> {
   try {
-    const raw = await fs.readFile(DATA_PATH, "utf8");
-    const parsed = JSON.parse(raw) as BusinessDataFile;
-    return {
-      ...DEFAULT_DATA,
-      ...parsed,
-      business: {
-        ...DEFAULT_DATA.business,
-        ...(parsed.business || {}),
-      },
-    };
+    const raw = await fs.readFile(filePath, "utf8");
+    return JSON.parse(raw) as T;
   } catch {
-    return DEFAULT_DATA;
+    return fallback;
   }
 }
 
-export async function writeBusinessData(next: BusinessDataFile) {
-  const merged: BusinessDataFile = {
-    ...DEFAULT_DATA,
-    ...next,
-    business: {
-      ...DEFAULT_DATA.business,
-      ...(next.business || {}),
-    },
+function formatPrice(price: ProgramPrice) {
+  return typeof price === "number" ? String(price) : price;
+}
+
+function formatKnowledgeBase(data: KnowledgeData) {
+  const lines: string[] = [];
+
+  lines.push("Approved programs:");
+  for (const program of data.programs) {
+    lines.push(
+      `- ${program.name} | duration: ${program.duration} | price: ${formatPrice(program.price)} | target: ${program.target} | description: ${program.description}`,
+    );
+  }
+
+  lines.push("");
+  lines.push("Approved FAQ:");
+  for (const item of data.faq) {
+    lines.push(`- Q: ${item.question}`);
+    lines.push(`  A: ${item.answer}`);
+  }
+
+  if (data.conflicts_found.length) {
+    lines.push("");
+    lines.push("Known conflicts or values that need caution:");
+    for (const conflict of data.conflicts_found) {
+      lines.push(`- ${conflict}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+export async function readKnowledgeData(): Promise<KnowledgeData> {
+  return readJsonFile(KNOWLEDGE_PATH, DEFAULT_KNOWLEDGE);
+}
+
+export async function readPrograms(): Promise<ProgramsData> {
+  const knowledge = await readKnowledgeData();
+  return {
+    programs: knowledge.programs,
+    conflicts_found: knowledge.conflicts_found,
   };
-  await fs.mkdir(path.dirname(DATA_PATH), { recursive: true });
-  await fs.writeFile(DATA_PATH, JSON.stringify(merged, null, 2), "utf8");
+}
+
+export async function readFAQ(): Promise<FAQData> {
+  const knowledge = await readKnowledgeData();
+  return {
+    faq: knowledge.faq,
+  };
+}
+
+export async function readRules(): Promise<RulesData> {
+  return readJsonFile(RULES_PATH, DEFAULT_RULES);
+}
+
+export async function readBusinessData(): Promise<BusinessDataFile> {
+  const knowledge = await readKnowledgeData();
+  const rules = await readRules();
+
+  return {
+    systemPrompt: DEFAULT_SYSTEM_PROMPT,
+    business: {
+      name: BUSINESS_NAME,
+      knowledgeBase: formatKnowledgeBase(knowledge),
+      rules: rules.rules,
+    },
+    knowledge,
+  };
+}
+
+export async function buildContext(intent: string) {
+  const data = await readKnowledgeData();
+
+  if (intent === "price" || intent === "program" || intent === "duration") {
+    return {
+      programs: data.programs,
+      conflicts_found: data.conflicts_found,
+    };
+  }
+
+  if (intent === "faq" || intent === "scholarship" || intent === "contact") {
+    return {
+      faq: data.faq,
+      conflicts_found: data.conflicts_found,
+    };
+  }
+
+  return data;
+}
+
+export function detectIntent(message: string): string {
+  const m = message.toLowerCase();
+
+  if (
+    m.includes("үнэ") ||
+    m.includes("төлбөр") ||
+    m.includes("price") ||
+    m.includes("cost")
+  ) {
+    return "price";
+  }
+
+  if (
+    m.includes("хугацаа") ||
+    m.includes("сар") ||
+    m.includes("duration") ||
+    m.includes("how long")
+  ) {
+    return "duration";
+  }
+
+  if (
+    m.includes("ielts") ||
+    m.includes("toefl") ||
+    m.includes("хөтөлбөр") ||
+    m.includes("program")
+  ) {
+    return "program";
+  }
+
+  if (
+    m.includes("тэтгэлэг") ||
+    m.includes("visa") ||
+    m.includes("essay") ||
+    m.includes("document") ||
+    m.includes("scholarship")
+  ) {
+    return "scholarship";
+  }
+
+  if (
+    m.includes("утас") ||
+    m.includes("хаяг") ||
+    m.includes("facebook") ||
+    m.includes("байршил") ||
+    m.includes("contact")
+  ) {
+    return "contact";
+  }
+
+  return "general";
 }
