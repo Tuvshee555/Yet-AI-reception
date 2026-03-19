@@ -95,6 +95,16 @@ export function buildPrompt(options: {
   lines.push(
     "- If the question is unclear, ask one short clarifying question.",
   );
+  lines.push("- Do not repeat the same phrase in every response.");
+  lines.push(
+    "- Do not ask for contact information unless the user clearly wants to join.",
+  );
+  lines.push(
+    "- If the user input is unclear or random, guide them instead of trying to sell.",
+  );
+  lines.push(
+    "- When answering sensitive questions (like scholarship), answer first, then optionally suggest a program.",
+  );
 
   lines.push("");
   lines.push(`Business name: ${business?.name || "N/A"}`);
