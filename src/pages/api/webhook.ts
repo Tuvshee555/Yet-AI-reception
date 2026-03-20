@@ -3,8 +3,9 @@ import { askOpenAI } from "../../lib/openai";
 import { sendTextMessage, sendTypingOn } from "../../lib/messenger";
 import { sendTextMessage as sendIgTextMessage } from "../../lib/instagram";
 import { rateLimit } from "../../lib/rateLimit";
-import { readBusinessData } from "../../lib/businessData";
+import { detectIntent, readBusinessData } from "../../lib/businessData";
 import { appendMessage, buildPrompt, getHistory } from "../../lib/conversation";
+import { maybeGetDirectReply } from "../../lib/directReplies";
 import { fixMojibake } from "../../lib/encoding";
 import { isDuplicateReply, sanitizeAssistantReply } from "../../lib/reply";
 
@@ -209,9 +210,48 @@ async function handleMessage(
     await sendFacebookTypingIndicator(senderId, token, pageId);
   }
 
-  const { systemPrompt, business } = await readBusinessData();
+  const { systemPrompt, business, knowledge } = await readBusinessData();
   const sessionId = `${platform}:${senderId}`;
   const history = getHistory(sessionId);
+  const intent = detectIntent(text);
+  const directReply =
+    intent === "program" || intent === "price"
+      ? maybeGetDirectReply({
+          userText: text,
+          history,
+          knowledge,
+        })
+      : null;
+  const recentReplyKey = `${platform}:${senderId}`;
+  const lastReply = recentReplies.get(recentReplyKey);
+
+  appendMessage(sessionId, "user", text);
+
+  if (directReply) {
+    const safeDirectReply = sanitizeAssistantReply(directReply);
+
+    if (lastReply && isDuplicateReply(lastReply.text, safeDirectReply)) {
+      console.log("Skipping duplicate outbound reply", { platform, senderId });
+      return;
+    }
+
+    appendMessage(sessionId, "assistant", safeDirectReply);
+    recentReplies.set(recentReplyKey, {
+      text: safeDirectReply,
+      timestamp: Date.now(),
+    });
+
+    await sendPlatformMessage(
+      platform,
+      senderId,
+      safeDirectReply,
+      token,
+      pageId,
+      igUserId,
+    );
+    return;
+  }
+
   const prompt = buildPrompt({
     systemPrompt: systemPrompt || "You are a Mongolian AI receptionist.",
     business: business || {},
@@ -228,10 +268,6 @@ async function handleMessage(
   }
 
   const safeReply = sanitizeAssistantReply(fixMojibake(aiReply));
-  const recentReplyKey = `${platform}:${senderId}`;
-  const lastReply = recentReplies.get(recentReplyKey);
-
-  appendMessage(sessionId, "user", text);
 
   if (lastReply && isDuplicateReply(lastReply.text, safeReply)) {
     console.log("Skipping duplicate outbound reply", { platform, senderId });

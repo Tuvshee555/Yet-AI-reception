@@ -11,6 +11,26 @@ export type Program = {
   description: string;
 };
 
+export type SpecialOffer = Program & {
+  eligibility: string;
+};
+
+export type DiscountPolicy = {
+  name: string;
+  discount: string;
+  applies_to: string;
+  eligibility: string;
+  description: string;
+  verification: string;
+};
+
+export type VerifiedCredential = {
+  title: string;
+  issuer: string;
+  issued_on: string;
+  description: string;
+};
+
 export type FAQItem = {
   question: string;
   answer: string;
@@ -19,13 +39,19 @@ export type FAQItem = {
 export type KnowledgeData = {
   packages: Program[];
   modules: Program[];
+  special_offers: SpecialOffer[];
+  discount_policies: DiscountPolicy[];
+  verified_credentials: VerifiedCredential[];
   faq: FAQItem[];
   conflicts_found: string[];
 };
 
-export type ProgramsData = Pick<KnowledgeData, "packages" | "modules" | "conflicts_found">;
+export type ProgramsData = Pick<
+  KnowledgeData,
+  "packages" | "modules" | "special_offers" | "discount_policies" | "conflicts_found"
+>;
 
-export type FAQData = Pick<KnowledgeData, "faq">;
+export type FAQData = Pick<KnowledgeData, "faq" | "verified_credentials">;
 
 export type PromptBusinessData = {
   name: string;
@@ -45,6 +71,9 @@ const DEFAULT_SYSTEM_PROMPT =
 const DEFAULT_KNOWLEDGE: KnowledgeData = {
   packages: [],
   modules: [],
+  special_offers: [],
+  discount_policies: [],
+  verified_credentials: [],
   faq: [],
   conflicts_found: [],
 };
@@ -58,7 +87,7 @@ async function readJsonFile<T>(filePath: string, fallback: T): Promise<T> {
   }
 }
 
-function formatPrice(price: ProgramPrice) {
+export function formatPrice(price: ProgramPrice) {
   return typeof price === "number" ? String(price) : price;
 }
 
@@ -81,6 +110,30 @@ function formatKnowledgeBase(data: KnowledgeData) {
   }
 
   lines.push("");
+  lines.push("Special offers:");
+  for (const offer of data.special_offers) {
+    lines.push(
+      `- ${offer.name} | duration: ${offer.duration} | price: ${formatPrice(offer.price)} | target: ${offer.target} | description: ${offer.description} | eligibility: ${offer.eligibility}`,
+    );
+  }
+
+  lines.push("");
+  lines.push("Discount policies:");
+  for (const policy of data.discount_policies) {
+    lines.push(
+      `- ${policy.name} | discount: ${policy.discount} | applies to: ${policy.applies_to} | eligibility: ${policy.eligibility} | description: ${policy.description} | verification: ${policy.verification}`,
+    );
+  }
+
+  lines.push("");
+  lines.push("Verified credentials:");
+  for (const credential of data.verified_credentials) {
+    lines.push(
+      `- ${credential.title} | issuer: ${credential.issuer} | issued on: ${credential.issued_on} | description: ${credential.description}`,
+    );
+  }
+
+  lines.push("");
   lines.push("FAQ:");
   for (const item of data.faq) {
     lines.push(`- Q: ${item.question}`);
@@ -99,6 +152,8 @@ export async function readPrograms(): Promise<ProgramsData> {
   return {
     packages: knowledge.packages,
     modules: knowledge.modules,
+    special_offers: knowledge.special_offers,
+    discount_policies: knowledge.discount_policies,
     conflicts_found: knowledge.conflicts_found,
   };
 }
@@ -107,6 +162,7 @@ export async function readFAQ(): Promise<FAQData> {
   const knowledge = await readKnowledgeData();
   return {
     faq: knowledge.faq,
+    verified_credentials: knowledge.verified_credentials,
   };
 }
 
@@ -129,12 +185,17 @@ export async function buildContext(intent: string) {
   if (intent === "price") {
     return {
       packages: data.packages,
+      modules: data.modules,
+      special_offers: data.special_offers,
+      discount_policies: data.discount_policies,
     };
   }
 
   if (intent === "duration") {
     return {
       packages: data.packages,
+      modules: data.modules,
+      special_offers: data.special_offers,
     };
   }
 
@@ -142,17 +203,27 @@ export async function buildContext(intent: string) {
     return {
       packages: data.packages,
       modules: data.modules,
+      special_offers: data.special_offers,
+      discount_policies: data.discount_policies,
+      verified_credentials: data.verified_credentials,
     };
   }
 
   if (intent === "faq" || intent === "scholarship" || intent === "contact") {
     return {
       faq: data.faq,
+      special_offers: data.special_offers,
+      discount_policies: data.discount_policies,
+      verified_credentials: data.verified_credentials,
     };
   }
 
   return {
     packages: data.packages,
+    modules: data.modules,
+    special_offers: data.special_offers,
+    discount_policies: data.discount_policies,
+    verified_credentials: data.verified_credentials,
     faq: data.faq,
   };
 }

@@ -2,8 +2,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { askOpenAI } from "../../lib/openai";
 import { getClientKey, rateLimit } from "../../lib/rateLimit";
-import { readBusinessData } from "../../lib/businessData";
+import { detectIntent, readBusinessData } from "../../lib/businessData";
 import { appendMessage, buildPrompt, getHistory } from "../../lib/conversation";
+import { maybeGetDirectReply } from "../../lib/directReplies";
 import { fixMojibake } from "../../lib/encoding";
 import { sanitizeAssistantReply } from "../../lib/reply";
 
@@ -25,9 +26,26 @@ export default async function handler(
   }
 
   try {
-    const { systemPrompt, business } = await readBusinessData();
+    const { systemPrompt, business, knowledge } = await readBusinessData();
     const sessionId = `demo:${getClientKey(req)}`;
     const history = getHistory(sessionId);
+    const intent = detectIntent(text);
+    const directReply =
+      intent === "program" || intent === "price"
+        ? maybeGetDirectReply({
+            userText: text,
+            history,
+            knowledge,
+          })
+        : null;
+
+    if (directReply) {
+      const safeReply = sanitizeAssistantReply(directReply);
+      appendMessage(sessionId, "user", text);
+      appendMessage(sessionId, "assistant", safeReply);
+      return res.status(200).json({ reply: safeReply });
+    }
+
     const prompt = buildPrompt({
       systemPrompt: systemPrompt || "You are a helpful Mongolian receptionist.",
       business: business || {},

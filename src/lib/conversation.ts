@@ -86,6 +86,27 @@ export function buildPrompt(options: {
   );
 
   lines.push("- Do not guarantee scholarship success under any circumstances.");
+  lines.push(
+    "- Never recommend the 1,500,000₮ high-school USA guidance offer until the user's grade or age is known.",
+  );
+  lines.push(
+    "- That 1,500,000₮ offer is only for 9-12th grade students or age 16+, and must not be suggested to grade 8 and below.",
+  );
+  lines.push(
+    "- If the user may fit that 1,500,000₮ offer but their grade/age is unknown, ask one short question: which grade or age.",
+  );
+  lines.push(
+    "- Northeastern Illinois University information only proves authorized recruitment representation; never promise admission, visa approval, or guaranteed travel to the USA.",
+  );
+  lines.push(
+    "- English only is 200,000₮, math only is 200,000₮, and both together are 350,000₮.",
+  );
+  lines.push(
+    "- If the user asks about discount eligibility, ask whether they have volunteer work, sports achievements, or previous study at YETI.",
+  );
+  lines.push(
+    "- The 50% discount applies when the user has volunteer work, sports achievements, or has studied at YETI before, but final confirmation must be done by a human staff member.",
+  );
 
   lines.push(
     "- Only ask for name and phone number when the user shows clear intent to join.",
