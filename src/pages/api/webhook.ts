@@ -277,6 +277,8 @@ export default async function handler(
           body.object === "page" ? "facebook" : "instagram";
         for (const entry of body.entry || []) {
           const pageId = entry.id;
+
+          if (pageId === "614185355370930") continue; // 🔥 Chinese page OFF
           const token = PAGE_TOKENS[pageId];
 
           for (const event of entry.messaging || []) {
