@@ -11,10 +11,7 @@ import { isDuplicateReply, sanitizeAssistantReply } from "../../lib/reply";
 
 const FB_VERIFY = process.env.VERIFY_TOKEN;
 const IG_VERIFY = process.env.VERIFY_TOKEN;
-const PAGE_TOKENS: Record<string, string | undefined> = {
-  "614185355370930": process.env.TOKEN_PAGE_1, //chinese page
-  "601173946571365": process.env.TOKEN_PAGE_2, //yeti academi
-};
+const PAGE_TOKEN = process.env.TOKEN_PAGE_1;
 const FALLBACK_SEND_ERROR_MESSAGE = "Уучлаарай, мессеж илгээхэд алдаа гарлаа.";
 
 type Platform = "facebook" | "instagram";
@@ -321,19 +318,26 @@ export default async function handler(
       if (body.object === "page" || body.object === "instagram") {
         const platform: Platform =
           body.object === "page" ? "facebook" : "instagram";
+        const token = PAGE_TOKEN;
+
         for (const entry of body.entry || []) {
-          const pageId = entry.id;
+          const pageId =
+            typeof entry?.id === "string" ? entry.id : String(entry?.id || "");
+          const messagingEvents = Array.isArray(entry?.messaging)
+            ? entry.messaging
+            : [];
 
-          if (pageId === "614185355370930") continue; // 🔥 Chinese page OFF
-          const token = PAGE_TOKENS[pageId];
+          for (const event of messagingEvents) {
+            if (!event?.sender?.id) continue;
+            if (event?.message?.is_echo) continue;
 
-          for (const event of entry.messaging || []) {
-            if (!event.message || !event.sender) continue;
-            if (event.message.is_echo) continue;
+            const senderId = String(event.sender.id).trim();
+            const text =
+              typeof event?.message?.text === "string"
+                ? event.message.text.trim()
+                : "";
 
-            const senderId = event.sender.id;
-            const text = (event.message.text || "").trim();
-            if (!text) continue;
+            if (!senderId || !text) continue;
             const eventKey = buildEventKey(platform, senderId, event);
             if (!markEventProcessed(eventKey)) {
               console.log("Skipping duplicate webhook event", {
@@ -347,12 +351,6 @@ export default async function handler(
                 platform,
                 senderId,
               });
-              continue;
-            }
-
-            const igUserId = platform === "instagram" ? entry.id : undefined;
-            if (platform === "instagram" && !igUserId) {
-              console.error("Instagram entry.id missing; cannot reply.");
               continue;
             }
 
@@ -372,7 +370,7 @@ export default async function handler(
                 senderId,
                 text,
                 pageId,
-                igUserId,
+                platform === "instagram" ? pageId : undefined,
                 token,
               );
             } finally {
