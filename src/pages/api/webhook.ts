@@ -9,8 +9,7 @@ import { maybeGetDirectReply } from "../../lib/directReplies";
 import { fixMojibake } from "../../lib/encoding";
 import { isDuplicateReply, sanitizeAssistantReply } from "../../lib/reply";
 
-const FB_VERIFY = process.env.VERIFY_TOKEN;
-const IG_VERIFY = process.env.VERIFY_TOKEN;
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const PAGE_ID = "601173946571365";
 const FACEBOOK_TOKEN = process.env.TOKEN_PAGE_2!;
 const FALLBACK_SEND_ERROR_MESSAGE = "Уучлаарай, мессеж илгээхэд алдаа гарлаа.";
@@ -25,7 +24,7 @@ const recentIncomingTexts = new Map<string, number>();
 const recentReplies = new Map<string, { text: string; timestamp: number }>();
 
 function verifyToken(token: unknown) {
-  return token === FB_VERIFY || token === IG_VERIFY;
+  return token === VERIFY_TOKEN;
 }
 
 function pruneProcessedEvents() {
@@ -93,19 +92,11 @@ async function sendPlatformMessage(
   igUserId?: string | null,
 ) {
   if (!token) {
-    console.error("Missing page access token", {
+    console.error("Missing page access token — message not sent", {
       platform,
       pageId,
       senderId,
     });
-    console.error(
-      "Fallback message was not sent because no token is configured",
-      {
-        platform,
-        pageId,
-        senderId,
-      },
-    );
     return false;
   }
 
@@ -220,8 +211,7 @@ async function handleMessage(
           knowledge,
         })
       : null;
-  const recentReplyKey = `${platform}:${senderId}`;
-  const lastReply = recentReplies.get(recentReplyKey);
+  const lastReply = recentReplies.get(sessionId);
 
   appendMessage(sessionId, "user", text);
 
@@ -234,7 +224,7 @@ async function handleMessage(
     }
 
     appendMessage(sessionId, "assistant", safeDirectReply);
-    recentReplies.set(recentReplyKey, {
+    recentReplies.set(sessionId, {
       text: safeDirectReply,
       timestamp: Date.now(),
     });
@@ -257,8 +247,7 @@ async function handleMessage(
     userText: text,
   });
 
-  let aiReply = "Сайн байна уу!";
-
+  let aiReply: string;
   try {
     aiReply = await askOpenAI(prompt);
   } catch {
@@ -273,7 +262,7 @@ async function handleMessage(
   }
 
   appendMessage(sessionId, "assistant", safeReply);
-  recentReplies.set(recentReplyKey, { text: safeReply, timestamp: Date.now() });
+  recentReplies.set(sessionId, { text: safeReply, timestamp: Date.now() });
 
   await sendPlatformMessage(
     platform,
@@ -303,18 +292,6 @@ export default async function handler(
   if (req.method === "POST") {
     try {
       const body = req.body;
-
-      console.log("WEBHOOK BODY:", JSON.stringify(body, null, 2));
-
-      console.log("OBJECT:", body.object);
-      for (const entry of body.entry || []) {
-        console.log("ENTRY ID:", entry.id);
-        console.log("RECIPIENT ID:", entry.messaging?.[0]?.recipient?.id);
-        console.log(
-          "FIRST EVENT:",
-          JSON.stringify(entry.messaging?.[0], null, 2),
-        );
-      }
 
       if (body.object === "page" || body.object === "instagram") {
         for (const entry of body.entry || []) {
@@ -393,7 +370,7 @@ export default async function handler(
                 senderId,
                 text,
                 pageId,
-                platform === "instagram" ? pageId : undefined,
+                platform === "instagram" ? PAGE_ID : undefined,
                 token,
               );
             } finally {

@@ -1,3 +1,5 @@
+import { fixMojibake } from "./encoding";
+
 const KEY = process.env.GEMINI_API_KEY;
 
 if (!KEY) throw new Error("GEMINI_API_KEY not set");
@@ -35,4 +37,3 @@ export async function askGemini(prompt: string) {
     "Уучлаарай, систем түр алдаатай байна.";
   return fixMojibake(raw);
 }
-import { fixMojibake } from "./encoding";

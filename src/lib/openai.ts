@@ -52,6 +52,6 @@ export async function askOpenAI(prompt: string) {
   const data = await res.json();
   const raw =
     extractOutputText(data) ||
-    "Ð£ÑƒÑ‡Ð»Ð°Ð°Ñ€Ð°Ð¹, ÑÐ¸ÑÑ‚ÐµÐ¼ Ñ‚Ò¯Ñ€ Ð°Ð»Ð´Ð°Ð°Ñ‚Ð°Ð¹ Ð±Ð°Ð¹Ð½Ð°.";
+    "Уучлаарай, систем түр алдаатай байна.";
   return fixMojibake(raw);
 }
