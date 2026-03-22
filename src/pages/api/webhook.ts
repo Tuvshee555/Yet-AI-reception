@@ -13,7 +13,6 @@ const FB_VERIFY = process.env.VERIFY_TOKEN;
 const IG_VERIFY = process.env.VERIFY_TOKEN;
 const PAGE_ID = "601173946571365";
 const FACEBOOK_TOKEN = process.env.TOKEN_PAGE_2!;
-const INSTAGRAM_TOKEN = process.env.INSTAGRAM_TOKEN!;
 const FALLBACK_SEND_ERROR_MESSAGE = "Уучлаарай, мессеж илгээхэд алдаа гарлаа.";
 
 type Platform = "facebook" | "instagram";
@@ -348,11 +347,10 @@ export default async function handler(
             const platform: Platform =
               body.object === "instagram" ? "instagram" : "facebook";
 
-            const token =
-              platform === "instagram" ? INSTAGRAM_TOKEN : FACEBOOK_TOKEN;
+            const token = FACEBOOK_TOKEN;
 
             if (!token) {
-              console.error("Missing page access token", {
+              console.error("Missing TOKEN_PAGE_2 for page-connected messaging", {
                 platform,
                 pageId,
                 senderId,
@@ -392,7 +390,7 @@ export default async function handler(
                 senderId,
                 text,
                 pageId,
-                platform === "instagram" ? senderId : undefined,
+                platform === "instagram" ? pageId : undefined,
                 token,
               );
             } finally {
