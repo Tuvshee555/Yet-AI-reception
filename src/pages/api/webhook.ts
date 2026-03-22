@@ -113,7 +113,8 @@ async function sendPlatformMessage(
     if (platform === "facebook") {
       await sendTextMessage(senderId, text, token);
     } else {
-      await sendIgTextMessage(igUserId || "", senderId, text, token);
+      await sendIgTextMessage(igUserId || "", senderId, text);
+      //  await sendIgTextMessage(igUserId || "", senderId, text, token);
     }
     return true;
   } catch (error) {
@@ -136,7 +137,7 @@ async function sendPlatformMessage(
           igUserId || "",
           senderId,
           FALLBACK_SEND_ERROR_MESSAGE,
-          token,
+          // token,
         );
       }
     } catch (fallbackError) {
@@ -350,11 +351,14 @@ export default async function handler(
             const token = FACEBOOK_TOKEN;
 
             if (!token) {
-              console.error("Missing TOKEN_PAGE_2 for page-connected messaging", {
-                platform,
-                pageId,
-                senderId,
-              });
+              console.error(
+                "Missing TOKEN_PAGE_2 for page-connected messaging",
+                {
+                  platform,
+                  pageId,
+                  senderId,
+                },
+              );
               continue;
             }
 
