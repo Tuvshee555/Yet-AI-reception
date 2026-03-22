@@ -11,7 +11,14 @@ import { isDuplicateReply, sanitizeAssistantReply } from "../../lib/reply";
 
 const FB_VERIFY = process.env.VERIFY_TOKEN;
 const IG_VERIFY = process.env.VERIFY_TOKEN;
-const PAGE_TOKEN = process.env.TOKEN_PAGE_1;
+const PAGE_TOKENS: Record<string, string | undefined> = {
+  "614185355370930": process.env.TOKEN_PAGE_1, // chinese page
+  "601173946571365": process.env.TOKEN_PAGE_2, // yeti academi
+};
+const INSTAGRAM_PAGE_TOKEN =
+  process.env.INSTAGRAM_PAGE_TOKEN ||
+  process.env.TOKEN_PAGE_2 ||
+  process.env.TOKEN_PAGE_1;
 const FALLBACK_SEND_ERROR_MESSAGE = "Уучлаарай, мессеж илгээхэд алдаа гарлаа.";
 
 type Platform = "facebook" | "instagram";
@@ -316,10 +323,6 @@ export default async function handler(
       }
 
       if (body.object === "page" || body.object === "instagram") {
-        const platform: Platform =
-          body.object === "page" ? "facebook" : "instagram";
-        const token = PAGE_TOKEN;
-
         for (const entry of body.entry || []) {
           const pageId =
             typeof entry?.id === "string" ? entry.id : String(entry?.id || "");
@@ -332,12 +335,40 @@ export default async function handler(
             if (event?.message?.is_echo) continue;
 
             const senderId = String(event.sender.id).trim();
+            const recipientId =
+              typeof event?.recipient?.id === "string"
+                ? event.recipient.id.trim()
+                : "";
             const text =
               typeof event?.message?.text === "string"
                 ? event.message.text.trim()
                 : "";
 
             if (!senderId || !text) continue;
+
+            const platform: Platform =
+              body.object === "instagram" ||
+              (body.object === "page" && recipientId && recipientId !== pageId)
+                ? "instagram"
+                : "facebook";
+
+            const token =
+              platform === "facebook"
+                ? PAGE_TOKENS[recipientId || pageId] ?? PAGE_TOKENS[pageId]
+                : PAGE_TOKENS[pageId] ??
+                  PAGE_TOKENS[recipientId] ??
+                  INSTAGRAM_PAGE_TOKEN;
+
+            if (!token) {
+              console.error("Missing page access token", {
+                platform,
+                pageId,
+                recipientId,
+                senderId,
+              });
+              continue;
+            }
+
             const eventKey = buildEventKey(platform, senderId, event);
             if (!markEventProcessed(eventKey)) {
               console.log("Skipping duplicate webhook event", {
