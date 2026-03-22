@@ -11,14 +11,9 @@ import { isDuplicateReply, sanitizeAssistantReply } from "../../lib/reply";
 
 const FB_VERIFY = process.env.VERIFY_TOKEN;
 const IG_VERIFY = process.env.VERIFY_TOKEN;
-const PAGE_TOKENS: Record<string, string | undefined> = {
-  "614185355370930": process.env.TOKEN_PAGE_1, // chinese page
-  "601173946571365": process.env.TOKEN_PAGE_2, // yeti academi
-};
-const INSTAGRAM_PAGE_TOKEN =
-  process.env.INSTAGRAM_PAGE_TOKEN ||
-  process.env.TOKEN_PAGE_2 ||
-  process.env.TOKEN_PAGE_1;
+const PAGE_ID = "601173946571365";
+const FACEBOOK_TOKEN = process.env.TOKEN_PAGE_2!;
+const INSTAGRAM_TOKEN = process.env.INSTAGRAM_TOKEN!;
 const FALLBACK_SEND_ERROR_MESSAGE = "Уучлаарай, мессеж илгээхэд алдаа гарлаа.";
 
 type Platform = "facebook" | "instagram";
@@ -335,10 +330,6 @@ export default async function handler(
             if (event?.message?.is_echo) continue;
 
             const senderId = String(event.sender.id).trim();
-            const recipientId =
-              typeof event?.recipient?.id === "string"
-                ? event.recipient.id.trim()
-                : "";
             const text =
               typeof event?.message?.text === "string"
                 ? event.message.text.trim()
@@ -346,24 +337,24 @@ export default async function handler(
 
             if (!senderId || !text) continue;
 
+            if (body.object === "page" && pageId !== PAGE_ID) {
+              console.log("Skipping event for unexpected page", {
+                pageId,
+                senderId,
+              });
+              continue;
+            }
+
             const platform: Platform =
-              body.object === "instagram" ||
-              (body.object === "page" && recipientId && recipientId !== pageId)
-                ? "instagram"
-                : "facebook";
+              body.object === "instagram" ? "instagram" : "facebook";
 
             const token =
-              platform === "facebook"
-                ? PAGE_TOKENS[recipientId || pageId] ?? PAGE_TOKENS[pageId]
-                : PAGE_TOKENS[pageId] ??
-                  PAGE_TOKENS[recipientId] ??
-                  INSTAGRAM_PAGE_TOKEN;
+              platform === "instagram" ? INSTAGRAM_TOKEN : FACEBOOK_TOKEN;
 
             if (!token) {
               console.error("Missing page access token", {
                 platform,
                 pageId,
-                recipientId,
                 senderId,
               });
               continue;
@@ -401,7 +392,7 @@ export default async function handler(
                 senderId,
                 text,
                 pageId,
-                platform === "instagram" ? pageId : undefined,
+                platform === "instagram" ? senderId : undefined,
                 token,
               );
             } finally {
