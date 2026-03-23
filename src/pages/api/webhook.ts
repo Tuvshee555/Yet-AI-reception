@@ -11,7 +11,7 @@ import { isDuplicateReply, sanitizeAssistantReply } from "../../lib/reply";
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const PAGE_ID = "601173946571365";
-const FACEBOOK_TOKEN = process.env.TOKEN_PAGE_2!;
+const FACEBOOK_TOKEN = process.env.TOKEN_PAGE!;
 const FALLBACK_SEND_ERROR_MESSAGE = "Уучлаарай, мессеж илгээхэд алдаа гарлаа.";
 
 type Platform = "facebook" | "instagram";
@@ -327,14 +327,11 @@ export default async function handler(
             const token = FACEBOOK_TOKEN;
 
             if (!token) {
-              console.error(
-                "Missing TOKEN_PAGE_2 for page-connected messaging",
-                {
-                  platform,
-                  pageId,
-                  senderId,
-                },
-              );
+              console.error("Missing TOKEN_PAGE for page-connected messaging", {
+                platform,
+                pageId,
+                senderId,
+              });
               continue;
             }
 
