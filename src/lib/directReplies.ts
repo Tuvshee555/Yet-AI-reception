@@ -125,10 +125,25 @@ function isFaqOrFactualQuestion(text: string) {
   return factualKeywords.test(text) && !directOfferKeywords.test(text);
 }
 
+function isScheduleOrFormatQuestion(text: string) {
+  return /танхим|онлайн|online|offline|цагаар|хэдэн цаг|хэдэн өдөр|хоногт|хуваарь|schedule|хичээллэ|давтамж|хэзээ|when/.test(
+    text,
+  );
+}
+
+function hasPriceKeywords(text: string) {
+  return /үнэ|төлбөр|price|cost|how much|хэдэн төгрөг|зардал/.test(text);
+}
+
 function isEnglishMathPricingQuery(text: string) {
   const hasEnglish = /english|англи|angli/.test(text);
   const hasMath = /math|mathematics|мат(?:ематик)?|\bmat\b/.test(text);
-  return hasEnglish || hasMath;
+  if (!hasEnglish && !hasMath) return false;
+
+  // If the user is asking about schedule/format and NOT about price, skip direct pricing
+  if (isScheduleOrFormatQuestion(text) && !hasPriceKeywords(text)) return false;
+
+  return true;
 }
 
 function isDiscountEligible(text: string) {

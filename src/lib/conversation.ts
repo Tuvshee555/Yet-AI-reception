@@ -60,7 +60,7 @@ export function buildPrompt(options: {
 
   lines.push("Reply rules:");
   lines.push("- Answer in Mongolian.");
-  lines.push("- Keep replies short (1-2 sentences).");
+  lines.push("- Keep replies short (1-3 sentences). If the user asks multiple questions in one message, answer each question separately but concisely.");
   lines.push("- Use only the provided context.");
   lines.push("- Do not guess missing information.");
   lines.push("- If unsure, say you will connect to a human.");
