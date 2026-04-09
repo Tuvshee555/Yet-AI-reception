@@ -65,9 +65,9 @@ export type BusinessDataFile = {
 };
 
 const KNOWLEDGE_PATH = path.join(process.cwd(), "data", "business.json");
-const BUSINESS_NAME = "YETI Educational Academy";
+const BUSINESS_NAME = "YETI Academy";
 const DEFAULT_SYSTEM_PROMPT =
-  "You are the official AI receptionist for YETI Educational Academy. Reply in clear Mongolian. Use only the approved knowledge base. Never guess, never use contract-only or internal-only information, and never promise scholarships unless the knowledge base says so.";
+  "You are the official AI receptionist for YETI Academy. Reply in clear Mongolian. Use only the approved knowledge base. Never guess, never use contract-only or internal-only information, and never promise scholarships unless the knowledge base says so.";
 const DEFAULT_KNOWLEDGE: KnowledgeData = {
   packages: [],
   modules: [],
@@ -88,7 +88,7 @@ async function readJsonFile<T>(filePath: string, fallback: T): Promise<T> {
 }
 
 export function formatPrice(price: ProgramPrice) {
-  return typeof price === "number" ? String(price) : price;
+  return typeof price === "number" ? String(price) : "Үнэ тодорхойгүй";
 }
 
 function formatKnowledgeBase(data: KnowledgeData) {
@@ -281,6 +281,19 @@ export function detectIntent(message: string): string {
     m.includes("contact")
   ) {
     return "contact";
+  }
+
+  if (
+    m.includes("элс") ||
+    m.includes("бүртг") ||
+    m.includes("join") ||
+    m.includes("register") ||
+    m.includes("registration") ||
+    m.includes("enroll") ||
+    m.includes("sign up") ||
+    m.includes("signup")
+  ) {
+    return "join";
   }
 
   return "general";

@@ -181,6 +181,35 @@ function buildPricingReply(text: string) {
   return `${hasEnglish ? "Англи хэл" : "Математик"} дангаар 200,000₮ байна.`;
 }
 
+const REGISTRATION_PATTERNS = [
+  /бүртг/,
+  /элс/,
+  /\bjoin\b/,
+  /\bregister\b/,
+  /\bregistration\b/,
+  /\benroll\b/,
+  /\bsign\s*up\b/,
+  /\bsignup\b/,
+];
+
+function isRegistrationOrJoinQuestion(text: string) {
+  return REGISTRATION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function findRegistrationFaq(knowledge: KnowledgeData) {
+  return knowledge.faq.find((item) => {
+    const text = normalize(`${item.question} ${item.answer}`);
+    return isRegistrationOrJoinQuestion(text);
+  });
+}
+
+function buildRegistrationReply(knowledge: KnowledgeData) {
+  const item = findRegistrationFaq(knowledge);
+  if (item?.answer) return item.answer;
+
+  return "Бүртгүүлэхээр бол Google Form-ыг бөглөнө үү. Бүртгүүлсний дараа гэрээ, дансны мэдээлэл, сурах бичиг авах өдөр болон цахим ангид орох үйл ажиллагааны мэдээлэл өгнө.";
+}
+
 export function maybeGetDirectReply(options: {
   userText: string;
   history: ChatMessage[];
@@ -197,7 +226,13 @@ export function maybeGetDirectReply(options: {
     : null;
   if (pricingReply) return pricingReply;
 
-  if (!isHighSchoolOfferQuery(normalizedText)) return null;
+  if (!isHighSchoolOfferQuery(normalizedText)) {
+    if (isRegistrationOrJoinQuestion(normalizedText)) {
+      return buildRegistrationReply(knowledge);
+    }
+
+    return null;
+  }
 
   const offer = findHighSchoolOffer(knowledge);
   if (!offer || typeof offer.price !== "number") return null;

@@ -112,6 +112,9 @@ export function buildPrompt(options: {
     "- Only ask for name and phone number when the user shows clear intent to join.",
   );
   lines.push("- Do not repeatedly ask for contact information.");
+  lines.push(
+    "- When the user clearly wants to join or register, send the registration form link from the knowledge base and mention the follow-up steps after registration.",
+  );
 
   lines.push(
     "- If the question is unclear, ask one short clarifying question.",

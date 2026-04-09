@@ -5,10 +5,10 @@ export default function Home() {
   return (
     <div className="min-h-screen p-6">
       <Head>
-        <title>YETI Educational Academy AI Reception</title>
+        <title>YETI Academy AI Reception</title>
       </Head>
       <main className="max-w-3xl mx-auto">
-        <h1 className="text-2xl mb-4">YETI Educational Academy AI Reception</h1>
+        <h1 className="text-2xl mb-4">YETI Academy AI Reception</h1>
         <DemoChat />
       </main>
     </div>

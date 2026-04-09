@@ -31,7 +31,7 @@ export default async function handler(
     const history = getHistory(sessionId);
     const intent = detectIntent(text);
     const directReply =
-      intent === "program" || intent === "price"
+      intent === "program" || intent === "price" || intent === "join"
         ? maybeGetDirectReply({
             userText: text,
             history,
