@@ -232,41 +232,39 @@ function buildRegistrationReply(knowledge: KnowledgeData) {
     linkItem?.answer.match(/https?:\/\/\S+/)?.[0] ||
     "https://docs.google.com/forms/d/e/1FAIpQLScN5pd62y4UHh1ANWfZH7yW4l58S6SGLoK0u9m-30pROit0ZQ/viewform?pli=1";
 
-  return `Бүртгүүлэхийн тулд энэ form-ыг бөглөнө үү: ${link} Бүртгүүлсний дараа гэрээ, дансны мэдээлэл, сурах бичиг авах өдөр болон цахим ангид орох үйл ажиллагааны мэдээлэл өгнө.`;
+  return `Бүртгүүлэхийн тулд энэ form-ыг бөглөнө үү: ${link}`;
+}
+
+function buildPostRegistrationReply() {
+  return "Бүртгүүлсний дараа гэрээ, дансны мэдээлэл, сурах бичиг авах өдөр, цахим ангид орох заавар өгнө.";
 }
 
 function buildFamilyProgramReply(knowledge: KnowledgeData) {
-  const program = findProgramByKeywords(knowledge, PROGRAM_KEYWORD_SETS.family);
-  if (!program) return null;
+  if (!findProgramByKeywords(knowledge, PROGRAM_KEYWORD_SETS.family)) return null;
 
-  return `${program.name}т ${program.description} ${program.duration ? `Хугацаа: ${program.duration}.` : ""} Бүртгүүлэх бол form-ыг бөглөнө үү.`;
+  return `1+1 гэр бүлийн хөтөлбөрт 50-тын хүрд багц, 3 сарын цахим хичээл, хүүхдийн англи хэл ба математик, эцэг эхийн 1 сарын танхим сургалт орно. Нэг гэр бүлээс 3 хүн зэрэг ашиглана.`;
 }
 
 function buildEmployeeProgramReply(knowledge: KnowledgeData) {
-  const program = findProgramByKeywords(
-    knowledge,
-    PROGRAM_KEYWORD_SETS.employee,
-  );
-  if (!program) return null;
+  if (!findProgramByKeywords(knowledge, PROGRAM_KEYWORD_SETS.employee)) {
+    return null;
+  }
 
-  return `${program.name} нь ${program.description} ${program.duration ? `Давтамж: ${program.duration}.` : ""}`;
+  return "Ажилтнуудад зориулсан англи хэлний сургалт байгууллага дээр танхимаар явагдана. 7 хоногт 2 удаа орж, нэг ангид 25 хүртэл хүн хамрагдана.";
 }
 
 function buildSummerProgramReply(knowledge: KnowledgeData) {
-  const program = findProgramByKeywords(knowledge, PROGRAM_KEYWORD_SETS.summer);
-  if (!program) return null;
+  if (!findProgramByKeywords(knowledge, PROGRAM_KEYWORD_SETS.summer)) return null;
 
-  return `${program.name}: ${program.description} ${program.duration ? `Хугацаа: ${program.duration}.` : ""}`;
+  return "Зуны хүүхдийн сургалтанд англи хэл, математик орно. Англи хэлийг гадаад багш нар олон улсын стандартын дагуу заана.";
 }
 
 function buildParentChildProgramReply(knowledge: KnowledgeData) {
-  const program = findProgramByKeywords(
-    knowledge,
-    PROGRAM_KEYWORD_SETS.parentChild,
-  );
-  if (!program) return null;
+  if (!findProgramByKeywords(knowledge, PROGRAM_KEYWORD_SETS.parentChild)) {
+    return null;
+  }
 
-  return `${program.name}: ${program.description} ${program.duration ? `Хугацаа: ${program.duration}.` : ""}`;
+  return "Эцэг эх-хүүхдийн хөгжлийн бүрэлдэхүүнд харилцаа, ойлголцлын дасгал, гэр бүлийн хамтын үйл ажиллагаа, эцэг эхийн зөвлөмж, хүүхдийн арт-терапи орно.";
 }
 
 function buildNewProgramReply(text: string, knowledge: KnowledgeData) {
@@ -326,6 +324,10 @@ export function maybeGetDirectReply(options: {
   if (isCertificateOrGuaranteeQuestion(normalizedText)) return null;
 
   if (isRegistrationOrJoinQuestion(normalizedText)) {
+    if (normalizedText.includes("дараа")) {
+      return buildPostRegistrationReply();
+    }
+
     return buildRegistrationReply(knowledge);
   }
 
