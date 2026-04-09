@@ -126,7 +126,7 @@ function isFaqOrFactualQuestion(text: string) {
 }
 
 function isScheduleOrFormatQuestion(text: string) {
-  return /танхим|онлайн|online|offline|цагаар|хэдэн цаг|хэдэн өдөр|хоногт|хуваарь|schedule|хичээллэ|давтамж|хэзээ|when/.test(
+  return /танхим|онлайн|online|offline|цагаар|хэдэн цаг|хэдэн өдөр|хоногт|хуваарь|schedule|хичээллэ|давтамж|хэзээ|when|удаа|ордог|сарынх|сарын/.test(
     text,
   );
 }
@@ -242,12 +242,18 @@ function buildPostRegistrationReply() {
 function buildFamilyProgramReply(knowledge: KnowledgeData) {
   if (!findProgramByKeywords(knowledge, PROGRAM_KEYWORD_SETS.family)) return null;
 
-  return `1+1 гэр бүлийн хөтөлбөрт 50-тын хүрд багц, 3 сарын цахим хичээл, хүүхдийн англи хэл ба математик, эцэг эхийн 1 сарын танхим сургалт орно. Нэг гэр бүлээс 3 хүн зэрэг ашиглана.`;
+  return "1+1 гэр бүлийн хөтөлбөрт 50-тын хүрд багц, 3 сарын цахим хичээл, хүүхдийн англи хэл ба математик, эцэг эхийн 1 сарын танхим сургалт орно. Нэг гэр бүлээс 3 хүн зэрэг ашиглана.";
 }
 
-function buildEmployeeProgramReply(knowledge: KnowledgeData) {
+function buildEmployeeProgramReply(knowledge: KnowledgeData, text: string) {
   if (!findProgramByKeywords(knowledge, PROGRAM_KEYWORD_SETS.employee)) {
     return null;
+  }
+
+  const normalized = normalize(text);
+
+  if (normalized.includes("хэдэн удаа") || normalized.includes("давтамж") || normalized.includes("ордог")) {
+    return "7 хоногт 2 удаа ордог.";
   }
 
   return "Ажилтнуудад зориулсан англи хэлний сургалт байгууллага дээр танхимаар явагдана. 7 хоногт 2 удаа орж, нэг ангид 25 хүртэл хүн хамрагдана.";
@@ -259,9 +265,15 @@ function buildSummerProgramReply(knowledge: KnowledgeData) {
   return "Зуны хүүхдийн сургалтанд англи хэл, математик орно. Англи хэлийг гадаад багш нар олон улсын стандартын дагуу заана.";
 }
 
-function buildParentChildProgramReply(knowledge: KnowledgeData) {
+function buildParentChildProgramReply(knowledge: KnowledgeData, text: string) {
   if (!findProgramByKeywords(knowledge, PROGRAM_KEYWORD_SETS.parentChild)) {
     return null;
+  }
+
+  const normalized = normalize(text);
+
+  if (normalized.includes("хэдэн") || normalized.includes("сарын")) {
+    return "Эцэг эхийн сургалт 1 сарын танхим сургалт байна.";
   }
 
   return "Эцэг эх-хүүхдийн хөгжлийн бүрэлдэхүүнд харилцаа, ойлголцлын дасгал, гэр бүлийн хамтын үйл ажиллагаа, эцэг эхийн зөвлөмж, хүүхдийн арт-терапи орно.";
@@ -281,11 +293,11 @@ function buildNewProgramReply(text: string, knowledge: KnowledgeData) {
 
   if (
     normalized.includes("ажилтн") ||
-    normalized.includes("байгууллага") ||
+    normalized.includes("байгууллаг") ||
     normalized.includes("employee") ||
     normalized.includes("corporate")
   ) {
-    return buildEmployeeProgramReply(knowledge);
+    return buildEmployeeProgramReply(knowledge, text);
   }
 
   if (
@@ -299,6 +311,7 @@ function buildNewProgramReply(text: string, knowledge: KnowledgeData) {
 
   if (
     normalized.includes("эцэг эх") ||
+    normalized.includes("эцэг эхийн") ||
     normalized.includes("parent") ||
     normalized.includes("art") ||
     normalized.includes("арт") ||
@@ -306,7 +319,7 @@ function buildNewProgramReply(text: string, knowledge: KnowledgeData) {
     normalized.includes("терапи") ||
     normalized.includes("хамтарсан")
   ) {
-    return buildParentChildProgramReply(knowledge);
+    return buildParentChildProgramReply(knowledge, text);
   }
 
   return null;
