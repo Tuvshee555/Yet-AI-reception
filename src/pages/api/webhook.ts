@@ -240,19 +240,17 @@ async function handleMessage(
   const sessionId = `${platform}:${senderId}`;
   const history = getHistory(sessionId);
   const intent = detectIntent(text);
-  const directReply =
-    intent === "program" || intent === "price" || intent === "join"
-      ? maybeGetDirectReply({
-          userText: text,
-          history,
-          knowledge,
-        })
-      : null;
+  const directReply = maybeGetDirectReply({
+    userText: text,
+    history,
+    knowledge,
+  });
   const lastReply = recentReplies.get(sessionId);
 
   appendMessage(sessionId, "user", text);
 
   if (directReply) {
+    console.log("Webhook direct reply matched", { platform, senderId, intent });
     const safeDirectReply = sanitizeAssistantReply(directReply);
 
     if (lastReply && isDuplicateReply(lastReply.text, safeDirectReply)) {

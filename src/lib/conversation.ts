@@ -115,6 +115,9 @@ export function buildPrompt(options: {
   lines.push(
     "- When the user clearly wants to join or register, send the registration form link from the knowledge base and mention the follow-up steps after registration.",
   );
+  lines.push(
+    "- For the 1+1 family program, employee English class, kids summer program, and parent-child/art-therapy program, answer with the specific program details from the knowledge base instead of generic English course information.",
+  );
 
   lines.push(
     "- If the question is unclear, ask one short clarifying question.",

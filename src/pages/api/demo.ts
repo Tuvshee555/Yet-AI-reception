@@ -30,16 +30,14 @@ export default async function handler(
     const sessionId = `demo:${getClientKey(req)}`;
     const history = getHistory(sessionId);
     const intent = detectIntent(text);
-    const directReply =
-      intent === "program" || intent === "price" || intent === "join"
-        ? maybeGetDirectReply({
-            userText: text,
-            history,
-            knowledge,
-          })
-        : null;
+    const directReply = maybeGetDirectReply({
+      userText: text,
+      history,
+      knowledge,
+    });
 
     if (directReply) {
+      console.log("Demo direct reply matched", { intent, text });
       const safeReply = sanitizeAssistantReply(directReply);
       appendMessage(sessionId, "user", text);
       appendMessage(sessionId, "assistant", safeReply);

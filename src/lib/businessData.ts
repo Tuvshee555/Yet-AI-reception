@@ -286,6 +286,9 @@ export function detectIntent(message: string): string {
   if (
     m.includes("элс") ||
     m.includes("бүртг") ||
+    m.includes("form") ||
+    m.includes("link") ||
+    m.includes("линк") ||
     m.includes("join") ||
     m.includes("register") ||
     m.includes("registration") ||

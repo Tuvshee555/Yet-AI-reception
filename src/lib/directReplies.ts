@@ -1,4 +1,4 @@
-import type { KnowledgeData, SpecialOffer } from "./businessData";
+import type { KnowledgeData, Program, SpecialOffer } from "./businessData";
 import type { ChatMessage } from "./conversation";
 
 type StudentInfo = {
@@ -184,6 +184,9 @@ function buildPricingReply(text: string) {
 const REGISTRATION_PATTERNS = [
   /бүртг/,
   /элс/,
+  /form/,
+  /link/,
+  /линк/,
   /\bjoin\b/,
   /\bregister\b/,
   /\bregistration\b/,
@@ -196,18 +199,119 @@ function isRegistrationOrJoinQuestion(text: string) {
   return REGISTRATION_PATTERNS.some((pattern) => pattern.test(text));
 }
 
-function findRegistrationFaq(knowledge: KnowledgeData) {
-  return knowledge.faq.find((item) => {
-    const text = normalize(`${item.question} ${item.answer}`);
-    return isRegistrationOrJoinQuestion(text);
+const PROGRAM_KEYWORD_SETS = {
+  family: ["1+1", "гэр бүл", "family", "хүүхэд хөгжил"],
+  employee: ["ажилтн", "байгууллага", "employee", "corporate"],
+  summer: ["зуны", "summer", "хүүхдүүд", "kids"],
+  parentChild: ["эцэг эх", "parent", "art", "арт", "therapy", "терапи", "хамтарсан"],
+} as const;
+
+function getAllPrograms(knowledge: KnowledgeData): Program[] {
+  return [...knowledge.packages, ...knowledge.modules, ...knowledge.special_offers];
+}
+
+function findProgramByKeywords(
+  knowledge: KnowledgeData,
+  keywords: readonly string[],
+) {
+  return getAllPrograms(knowledge).find((program) => {
+    const haystack = normalize(
+      `${program.name} ${program.target} ${program.description}`,
+    );
+    return keywords.some((keyword) => haystack.includes(normalize(keyword)));
   });
 }
 
 function buildRegistrationReply(knowledge: KnowledgeData) {
-  const item = findRegistrationFaq(knowledge);
-  if (item?.answer) return item.answer;
+  const linkItem = knowledge.faq.find((item) => {
+    const text = normalize(`${item.question} ${item.answer}`);
+    return text.includes("docs.google.com/forms");
+  });
 
-  return "Бүртгүүлэхээр бол Google Form-ыг бөглөнө үү. Бүртгүүлсний дараа гэрээ, дансны мэдээлэл, сурах бичиг авах өдөр болон цахим ангид орох үйл ажиллагааны мэдээлэл өгнө.";
+  const link =
+    linkItem?.answer.match(/https?:\/\/\S+/)?.[0] ||
+    "https://docs.google.com/forms/d/e/1FAIpQLScN5pd62y4UHh1ANWfZH7yW4l58S6SGLoK0u9m-30pROit0ZQ/viewform?pli=1";
+
+  return `Бүртгүүлэхийн тулд энэ form-ыг бөглөнө үү: ${link} Бүртгүүлсний дараа гэрээ, дансны мэдээлэл, сурах бичиг авах өдөр болон цахим ангид орох үйл ажиллагааны мэдээлэл өгнө.`;
+}
+
+function buildFamilyProgramReply(knowledge: KnowledgeData) {
+  const program = findProgramByKeywords(knowledge, PROGRAM_KEYWORD_SETS.family);
+  if (!program) return null;
+
+  return `${program.name}т ${program.description} ${program.duration ? `Хугацаа: ${program.duration}.` : ""} Бүртгүүлэх бол form-ыг бөглөнө үү.`;
+}
+
+function buildEmployeeProgramReply(knowledge: KnowledgeData) {
+  const program = findProgramByKeywords(
+    knowledge,
+    PROGRAM_KEYWORD_SETS.employee,
+  );
+  if (!program) return null;
+
+  return `${program.name} нь ${program.description} ${program.duration ? `Давтамж: ${program.duration}.` : ""}`;
+}
+
+function buildSummerProgramReply(knowledge: KnowledgeData) {
+  const program = findProgramByKeywords(knowledge, PROGRAM_KEYWORD_SETS.summer);
+  if (!program) return null;
+
+  return `${program.name}: ${program.description} ${program.duration ? `Хугацаа: ${program.duration}.` : ""}`;
+}
+
+function buildParentChildProgramReply(knowledge: KnowledgeData) {
+  const program = findProgramByKeywords(
+    knowledge,
+    PROGRAM_KEYWORD_SETS.parentChild,
+  );
+  if (!program) return null;
+
+  return `${program.name}: ${program.description} ${program.duration ? `Хугацаа: ${program.duration}.` : ""}`;
+}
+
+function buildNewProgramReply(text: string, knowledge: KnowledgeData) {
+  const normalized = normalize(text);
+
+  if (
+    normalized.includes("1+1") ||
+    normalized.includes("гэр бүл") ||
+    normalized.includes("family") ||
+    normalized.includes("хүүхэд хөгжил")
+  ) {
+    return buildFamilyProgramReply(knowledge);
+  }
+
+  if (
+    normalized.includes("ажилтн") ||
+    normalized.includes("байгууллага") ||
+    normalized.includes("employee") ||
+    normalized.includes("corporate")
+  ) {
+    return buildEmployeeProgramReply(knowledge);
+  }
+
+  if (
+    normalized.includes("зуны") ||
+    normalized.includes("summer") ||
+    normalized.includes("хүүхдүүд") ||
+    normalized.includes("kids")
+  ) {
+    return buildSummerProgramReply(knowledge);
+  }
+
+  if (
+    normalized.includes("эцэг эх") ||
+    normalized.includes("parent") ||
+    normalized.includes("art") ||
+    normalized.includes("арт") ||
+    normalized.includes("therapy") ||
+    normalized.includes("терапи") ||
+    normalized.includes("хамтарсан")
+  ) {
+    return buildParentChildProgramReply(knowledge);
+  }
+
+  return null;
 }
 
 export function maybeGetDirectReply(options: {
@@ -220,6 +324,13 @@ export function maybeGetDirectReply(options: {
 
   if (isFaqOrFactualQuestion(normalizedText)) return null;
   if (isCertificateOrGuaranteeQuestion(normalizedText)) return null;
+
+  if (isRegistrationOrJoinQuestion(normalizedText)) {
+    return buildRegistrationReply(knowledge);
+  }
+
+  const newProgramReply = buildNewProgramReply(normalizedText, knowledge);
+  if (newProgramReply) return newProgramReply;
 
   const pricingReply = isEnglishMathPricingQuery(normalizedText)
     ? buildPricingReply(normalizedText)
