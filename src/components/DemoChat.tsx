@@ -1,5 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1 px-1 py-1">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"
+          style={{ animationDelay: `${i * 0.15}s` }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function DemoChat() {
   const [messages, setMessages] = useState<
@@ -7,6 +21,11 @@ export default function DemoChat() {
   >([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, sending]);
 
   async function send() {
     if (!input || sending) return;
@@ -45,6 +64,14 @@ export default function DemoChat() {
             </div>
           </div>
         ))}
+        {sending && (
+          <div className="text-left">
+            <div className="inline-block p-2 my-1 rounded bg-gray-100">
+              <TypingDots />
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
       </div>
       <div className="flex gap-2">
         <input
