@@ -2,7 +2,6 @@
 import { askOpenAI } from "../../lib/openai";
 import { sendTextMessage, sendTypingOn } from "../../lib/messenger";
 import { sendTextMessage as sendIgTextMessage } from "../../lib/instagram";
-import { rateLimit } from "../../lib/rateLimit";
 import { detectIntent, readBusinessData } from "../../lib/businessData";
 import { appendMessage, buildPrompt, getHistory } from "../../lib/conversation";
 import { maybeGetDirectReply } from "../../lib/directReplies";
@@ -178,24 +177,6 @@ async function handleMessage(
   igUserId?: string | null,
   token?: string,
 ) {
-  const limit = rateLimit(
-    `${platform === "facebook" ? "fb" : "ig"}:${senderId}`,
-    20,
-    10 * 60 * 1000,
-  );
-  if (!limit.allowed) {
-    const waitMsg = "Түр хүлээнэ үү, дараа оролдоно уу.";
-    await sendPlatformMessage(
-      platform,
-      senderId,
-      waitMsg,
-      token,
-      pageId,
-      igUserId,
-    );
-    return;
-  }
-
   if (platform === "facebook") {
     await sendFacebookTypingIndicator(senderId, token, pageId);
   }
@@ -213,20 +194,6 @@ async function handleMessage(
     });
   } catch (err) {
     console.error("Usage pre-check failed, continuing anyway", { pageId, err });
-  }
-
-  if (usage && !usage.allowed) {
-    if (usage.reason === "Out of messages") {
-      await sendPlatformMessage(
-        platform,
-        senderId,
-        "Уучлаарай, мессежийн лимит дууссан байна.",
-        token,
-        pageId,
-        igUserId,
-      );
-    }
-    return;
   }
 
   // --- Load business data (knowledge from file, system prompt from DB if available) ---
